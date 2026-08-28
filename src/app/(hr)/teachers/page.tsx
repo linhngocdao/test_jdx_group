@@ -14,6 +14,7 @@ import {
 import { DeleteEntityDialog, SuspendEntityDialog } from "@/components/entity-form";
 import { useDataTableInstance, useDataTableState } from "@/hooks/use-data-table";
 import { useExportTeacherSchedule } from "@/hooks/use-export";
+import { useActiveSpecialties } from "@/hooks/use-specialties";
 import {
   useRemoveTeacher,
   useSetTeacherStatus,
@@ -38,6 +39,11 @@ export default function TeachersPage() {
   const removeMutation = useRemoveTeacher();
   const setStatusMutation = useSetTeacherStatus();
   const exportSchedule = useExportTeacherSchedule();
+  const { data: specialties } = useActiveSpecialties();
+  const specialtyNameById = useMemo(
+    () => new Map((specialties ?? []).map((s) => [s.id, s.name])),
+    [specialties]
+  );
 
   const tableState = useDataTableState({ initialPageSize: 20 });
 
@@ -80,8 +86,9 @@ export default function TeachersPage() {
             onError: () => toast.error("Không thể xuất file."),
           });
         },
+        specialtyNameById,
       }),
-    [setStatusMutation, exportSchedule]
+    [setStatusMutation, exportSchedule, specialtyNameById]
   );
 
   const table = useDataTableInstance<Teacher>({

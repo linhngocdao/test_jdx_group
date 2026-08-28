@@ -11,6 +11,7 @@ import {
   DataTableToolbar,
 } from "@/components/data-table";
 import { DeleteEntityDialog, SuspendEntityDialog } from "@/components/entity-form";
+import { useActiveEquipmentTypes } from "@/hooks/use-equipment-types";
 import { useDataTableInstance, useDataTableState } from "@/hooks/use-data-table";
 import { useRemoveRoom, useRoomList, useSetRoomStatus } from "@/hooks/use-rooms";
 import type { Room } from "@/types/room";
@@ -30,6 +31,11 @@ export default function RoomsPage() {
 
   const removeMutation = useRemoveRoom();
   const setStatusMutation = useSetRoomStatus();
+  const { data: equipmentTypes } = useActiveEquipmentTypes();
+  const equipmentNameById = useMemo(
+    () => new Map((equipmentTypes ?? []).map((e) => [e.id, e.name])),
+    [equipmentTypes]
+  );
 
   const tableState = useDataTableState({ initialPageSize: 20 });
 
@@ -65,8 +71,9 @@ export default function RoomsPage() {
             );
           }
         },
+        equipmentNameById,
       }),
-    [setStatusMutation]
+    [setStatusMutation, equipmentNameById]
   );
 
   const table = useDataTableInstance<Room>({

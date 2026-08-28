@@ -25,22 +25,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useActiveEquipmentTypes } from "@/hooks/use-equipment-types";
 import { useCreateRoom, useRoom, useUpdateRoom } from "@/hooks/use-rooms";
 import { roomSchema } from "@/lib/validation/room-schema";
-import type { RoomEquipment, RoomInput } from "@/types/room";
-
-const EQUIPMENT_OPTIONS: { value: RoomEquipment; label: string }[] = [
-  { value: "projector", label: "Máy chiếu" },
-  { value: "whiteboard", label: "Bảng trắng" },
-  { value: "computers", label: "Máy tính" },
-  { value: "ac", label: "Điều hoà" },
-];
+import type { RoomInput } from "@/types/room";
 
 const DEFAULT_VALUES: RoomInput = {
   name: "",
   building: "",
   capacity: 20,
-  equipment: [],
+  equipmentTypeIds: [],
   note: "",
   status: "active",
   suspendedReason: "",
@@ -55,6 +49,7 @@ interface RoomFormDialogProps {
 
 export function RoomFormDialog({ open, onOpenChange, mode, roomId }: RoomFormDialogProps) {
   const { data: existingRoom } = useRoom(mode === "edit" ? roomId ?? undefined : undefined);
+  const { data: equipmentTypes } = useActiveEquipmentTypes();
   const createMutation = useCreateRoom();
   const updateMutation = useUpdateRoom();
 
@@ -71,7 +66,7 @@ export function RoomFormDialog({ open, onOpenChange, mode, roomId }: RoomFormDia
         name: existingRoom.name,
         building: existingRoom.building,
         capacity: existingRoom.capacity,
-        equipment: existingRoom.equipment,
+        equipmentTypeIds: existingRoom.equipmentTypeIds,
         note: existingRoom.note ?? "",
         status: existingRoom.status,
         suspendedReason: existingRoom.suspendedReason ?? "",
@@ -161,34 +156,40 @@ export function RoomFormDialog({ open, onOpenChange, mode, roomId }: RoomFormDia
 
             <FormField
               control={form.control}
-              name="equipment"
+              name="equipmentTypeIds"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Trang thiết bị</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    {EQUIPMENT_OPTIONS.map((option) => {
-                      const checked = field.value?.includes(option.value);
-                      return (
-                        <label
-                          key={option.value}
-                          className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                        >
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(next) => {
-                              const current = field.value ?? [];
-                              field.onChange(
-                                next
-                                  ? [...current, option.value]
-                                  : current.filter((item) => item !== option.value)
-                              );
-                            }}
-                          />
-                          {option.label}
-                        </label>
-                      );
-                    })}
-                  </div>
+                  {(equipmentTypes?.length ?? 0) === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có loại thiết bị nào. Thêm trong trang Cài đặt.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {equipmentTypes?.map((option) => {
+                        const checked = field.value?.includes(option.id);
+                        return (
+                          <label
+                            key={option.id}
+                            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(next) => {
+                                const current = field.value ?? [];
+                                field.onChange(
+                                  next
+                                    ? [...current, option.id]
+                                    : current.filter((item) => item !== option.id)
+                                );
+                              }}
+                            />
+                            {option.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

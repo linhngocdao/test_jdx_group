@@ -22,6 +22,7 @@ import {
 import { EntityStatusBadge, SessionDetailDialog } from "@/components/entity-form";
 import { useTeacherSessions } from "@/hooks/use-class-sessions";
 import { useExportTeacherSchedule } from "@/hooks/use-export";
+import { useSpecialty } from "@/hooks/use-specialties";
 import { useTeacher } from "@/hooks/use-teachers";
 import type { ClassSession } from "@/types/class-session";
 
@@ -44,15 +45,6 @@ function formatDateTime(epochMs: number): string {
   }).format(epochMs);
 }
 
-const SPECIALTY_LABELS: Record<string, string> = {
-  frontend: "Frontend",
-  backend: "Backend",
-  mobile: "Mobile",
-  data: "Data",
-  design: "Design",
-  other: "Khác",
-};
-
 export default function TeacherDetailPage({
   params,
 }: {
@@ -62,6 +54,7 @@ export default function TeacherDetailPage({
   const router = useRouter();
 
   const { data: teacher, isLoading } = useTeacher(teacherId);
+  const { data: specialty } = useSpecialty(teacher?.specialtyId);
   const { data: sessions } = useTeacherSessions(teacherId);
   const exportSchedule = useExportTeacherSchedule();
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
@@ -144,7 +137,7 @@ export default function TeacherDetailPage({
               <span className="flex items-center gap-1.5">
                 <Phone className="size-3.5" /> {teacher.phone}
               </span>
-              <Badge variant="secondary">{SPECIALTY_LABELS[teacher.specialty]}</Badge>
+              <Badge variant="secondary">{specialty?.name ?? "—"}</Badge>
             </div>
             {teacher.suspendedReason && (
               <p className="text-sm text-amber-600">Lý do tạm ngưng: {teacher.suspendedReason}</p>

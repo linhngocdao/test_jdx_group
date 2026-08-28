@@ -2,9 +2,11 @@ import { db } from "./dexie-db";
 import type { ClassSession } from "@/types/class-session";
 import type { Course, CourseStatus } from "@/types/course";
 import type { Enrollment, EnrollmentStatus } from "@/types/enrollment";
-import type { Room, RoomEquipment } from "@/types/room";
+import type { EquipmentType } from "@/types/equipment-type";
+import type { Room } from "@/types/room";
+import type { Specialty } from "@/types/specialty";
 import type { Student } from "@/types/student";
-import type { Teacher, TeacherSpecialty } from "@/types/teacher";
+import type { Teacher } from "@/types/teacher";
 
 const FIRST_NAMES = [
   "Minh", "Hà", "Lan", "Tuấn", "Hương", "Quang", "Trang", "Nam", "Linh", "Phong",
@@ -13,8 +15,8 @@ const FIRST_NAMES = [
 const LAST_NAMES = [
   "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng",
 ];
-const SPECIALTIES: TeacherSpecialty[] = ["frontend", "backend", "mobile", "data", "design", "other"];
-const EQUIPMENT_POOL: RoomEquipment[] = ["projector", "whiteboard", "computers", "ac"];
+const SPECIALTY_NAMES = ["Frontend", "Backend", "Mobile", "Data", "Design", "Khác"];
+const EQUIPMENT_TYPE_NAMES = ["Máy chiếu", "Bảng trắng", "Máy tính", "Điều hoà"];
 const BUILDINGS = ["Tòa A", "Tòa B", "Tòa C"];
 const COURSE_TOPICS = [
   "Python cơ bản", "JavaScript nâng cao", "React từ đầu", "Node.js backend",
@@ -61,6 +63,48 @@ function randomCreatedAtWithinMonths(now: number, months: number): number {
   return monthStart.getTime() + Math.floor(Math.random() * Math.max(span, 1));
 }
 
+/**
+ * Đảm bảo danh mục "Chuyên môn" và "Trang thiết bị" luôn có sẵn giá trị mặc
+ * định — chỉ chèn nếu bảng đang rỗng (idempotent), vì đây là danh mục quản
+ * lý được (CRUD trong Cài đặt) nên "Sinh dữ liệu mẫu" không được tạo trùng
+ * lặp mỗi lần bấm.
+ */
+async function ensureCatalogsSeeded(now: number): Promise<{
+  specialties: Specialty[];
+  equipmentTypes: EquipmentType[];
+}> {
+  const [existingSpecialties, existingEquipmentTypes] = await Promise.all([
+    db.specialties.toArray(),
+    db.equipmentTypes.toArray(),
+  ]);
+
+  let specialties = existingSpecialties;
+  if (specialties.length === 0) {
+    specialties = SPECIALTY_NAMES.map((name) => ({
+      id: crypto.randomUUID(),
+      name,
+      status: "active" as const,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await db.specialties.bulkAdd(specialties);
+  }
+
+  let equipmentTypes = existingEquipmentTypes;
+  if (equipmentTypes.length === 0) {
+    equipmentTypes = EQUIPMENT_TYPE_NAMES.map((name) => ({
+      id: crypto.randomUUID(),
+      name,
+      status: "active" as const,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await db.equipmentTypes.bulkAdd(equipmentTypes);
+  }
+
+  return { specialties, equipmentTypes };
+}
+
 /** Sinh dữ liệu mẫu để demo table với số lượng bản ghi lớn — mặc định nhẹ, có thể tăng qua tham số. */
 export async function seedDatabase(options?: {
   teacherCount?: number;
@@ -75,6 +119,8 @@ export async function seedDatabase(options?: {
 
   const now = Date.now();
 
+  const { specialties, equipmentTypes } = await ensureCatalogsSeeded(now);
+
   const teachers: Teacher[] = Array.from({ length: teacherCount }, (_, i) => {
     const fullName = randomName();
     const suspended = Math.random() < 0.08;
@@ -83,7 +129,7 @@ export async function seedDatabase(options?: {
       fullName,
       email: `${makeSlug(fullName, i)}@center.edu.vn`,
       phone: randomPhone(),
-      specialty: pick(SPECIALTIES),
+      specialtyId: pick(specialties).id,
       weeklySessionLoad: randomInt(0, 14),
       bio: undefined,
       avatarSeed: makeSlug(fullName, i),
@@ -114,14 +160,17 @@ export async function seedDatabase(options?: {
 
   const rooms: Room[] = Array.from({ length: roomCount }, (_, i) => {
     const suspended = Math.random() < 0.1;
-    const equipmentCount = randomInt(1, EQUIPMENT_POOL.length);
-    const equipment = [...EQUIPMENT_POOL].sort(() => Math.random() - 0.5).slice(0, equipmentCount);
+    const equipmentCount = randomInt(1, equipmentTypes.length);
+    const equipmentTypeIds = [...equipmentTypes]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, equipmentCount)
+      .map((e) => e.id);
     return {
       id: crypto.randomUUID(),
       name: `P.${100 + i}`,
       building: pick(BUILDINGS),
       capacity: pick([15, 20, 25, 30, 40]),
-      equipment,
+      equipmentTypeIds,
       note: undefined,
       status: suspended ? "suspended" : "active",
       suspendedReason: suspended ? "Phòng đang sửa chữa" : undefined,

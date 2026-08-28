@@ -11,15 +11,7 @@ export const roomSchema: yup.ObjectSchema<RoomInput> = yup.object({
     .min(1, "Sức chứa phải lớn hơn 0")
     .max(500, "Sức chứa quá lớn")
     .required("Vui lòng nhập sức chứa"),
-  equipment: yup
-    .array(
-      yup
-        .mixed<RoomInput["equipment"][number]>()
-        .oneOf(["projector", "whiteboard", "computers", "ac"])
-        .required()
-    )
-    .required()
-    .default([]),
+  equipmentTypeIds: yup.array(yup.string().required()).required().default([]),
   note: yup.string().trim().optional(),
   status: yup.mixed<RoomInput["status"]>().oneOf(["active", "suspended"]).required(),
   suspendedReason: yup.string().trim().optional(),

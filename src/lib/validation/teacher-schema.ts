@@ -10,10 +10,7 @@ export const teacherSchema: yup.ObjectSchema<TeacherInput> = yup.object({
     .trim()
     .required("Vui lòng nhập số điện thoại")
     .matches(/^0\d{9,10}$/, "Số điện thoại không hợp lệ"),
-  specialty: yup
-    .mixed<TeacherInput["specialty"]>()
-    .oneOf(["frontend", "backend", "mobile", "data", "design", "other"])
-    .required("Vui lòng chọn chuyên môn"),
+  specialtyId: yup.string().trim().required("Vui lòng chọn chuyên môn"),
   weeklySessionLoad: yup
     .number()
     .typeError("Phải là số")

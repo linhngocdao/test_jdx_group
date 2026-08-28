@@ -21,6 +21,8 @@ import { useOpenCourses } from "@/hooks/use-courses";
 import { EnrollmentEligibilityError, useCreateEnrollment, useStudentEnrollments } from "@/hooks/use-enrollments";
 import { ENROLLMENT_STATUS_LABELS } from "@/types/enrollment";
 
+const PAGE_SIZE = 9;
+
 function formatDate(epochMs: number): string {
   if (!epochMs) return "—";
   return new Date(epochMs).toLocaleDateString("vi-VN");
@@ -29,8 +31,11 @@ function formatDate(epochMs: number): string {
 export default function EnrollPage() {
   const [studentId, setStudentId] = useState<string>("");
   const [errorsByCourse, setErrorsByCourse] = useState<Record<string, string[]>>({});
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data: openCourses, isLoading: coursesLoading } = useOpenCourses();
+  const visibleCourses = openCourses?.slice(0, visibleCount);
+  const hasMore = (openCourses?.length ?? 0) > visibleCount;
   const { data: myEnrollments } = useStudentEnrollments(studentId || undefined);
   const createEnrollment = useCreateEnrollment();
 
@@ -95,7 +100,7 @@ export default function EnrollPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {openCourses?.map((course) => {
+        {visibleCourses?.map((course) => {
           const alreadyEnrolled = myEnrolledCourseIds.has(course.id);
           const isFull = course.confirmedCount >= course.maxStudents;
           const errors = errorsByCourse[course.id] ?? [];
@@ -151,6 +156,17 @@ export default function EnrollPage() {
           );
         })}
       </div>
+
+      {hasMore && (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs text-muted-foreground">
+            Đang hiện {visibleCourses?.length}/{openCourses?.length} khoá học
+          </p>
+          <Button variant="outline" onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}>
+            Xem thêm khoá học
+          </Button>
+        </div>
+      )}
 
       {studentId && (myEnrollments?.length ?? 0) > 0 && (
         <div className="space-y-2">

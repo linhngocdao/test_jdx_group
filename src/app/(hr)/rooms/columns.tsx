@@ -13,25 +13,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader, type DataTableColumnDef } from "@/components/data-table";
 import { EntityStatusBadge } from "@/components/entity-form";
-import type { Room, RoomEquipment } from "@/types/room";
-
-const EQUIPMENT_LABELS: Record<RoomEquipment, string> = {
-  projector: "Máy chiếu",
-  whiteboard: "Bảng trắng",
-  computers: "Máy tính",
-  ac: "Điều hoà",
-};
+import type { Room } from "@/types/room";
 
 interface RoomColumnActions {
   onEdit: (room: Room) => void;
   onDelete: (room: Room) => void;
   onToggleSuspend: (room: Room) => void;
+  equipmentNameById: Map<string, string>;
 }
 
 export function createRoomColumns({
   onEdit,
   onDelete,
   onToggleSuspend,
+  equipmentNameById,
 }: RoomColumnActions): DataTableColumnDef<Room>[] {
   return [
     {
@@ -56,17 +51,17 @@ export function createRoomColumns({
       meta: { align: "right", width: "12%" },
     },
     {
-      id: "equipment",
+      id: "equipmentTypeIds",
       header: "Trang thiết bị",
       meta: { hideOnMobile: true, width: "26%" },
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
-          {row.original.equipment.length === 0 && (
+          {row.original.equipmentTypeIds.length === 0 && (
             <span className="text-xs text-muted-foreground">—</span>
           )}
-          {row.original.equipment.map((item) => (
-            <Badge key={item} variant="secondary" className="text-xs">
-              {EQUIPMENT_LABELS[item]}
+          {row.original.equipmentTypeIds.map((id) => (
+            <Badge key={id} variant="secondary" className="text-xs">
+              {equipmentNameById.get(id) ?? "—"}
             </Badge>
           ))}
         </div>

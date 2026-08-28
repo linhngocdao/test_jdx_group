@@ -31,24 +31,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useActiveSpecialties } from "@/hooks/use-specialties";
 import { useCreateTeacher, useTeacher, useUpdateTeacher } from "@/hooks/use-teachers";
 import { teacherSchema } from "@/lib/validation/teacher-schema";
-import type { TeacherInput, TeacherSpecialty } from "@/types/teacher";
-
-const SPECIALTY_LABELS: Record<TeacherSpecialty, string> = {
-  frontend: "Frontend",
-  backend: "Backend",
-  mobile: "Mobile",
-  data: "Data",
-  design: "Design",
-  other: "Khác",
-};
+import type { TeacherInput } from "@/types/teacher";
 
 const DEFAULT_VALUES: TeacherInput = {
   fullName: "",
   email: "",
   phone: "",
-  specialty: "frontend",
+  specialtyId: "",
   weeklySessionLoad: 0,
   bio: "",
   status: "active",
@@ -69,6 +61,7 @@ export function TeacherFormDialog({
   teacherId,
 }: TeacherFormDialogProps) {
   const { data: existingTeacher } = useTeacher(mode === "edit" ? teacherId ?? undefined : undefined);
+  const { data: specialties } = useActiveSpecialties();
   const createMutation = useCreateTeacher();
   const updateMutation = useUpdateTeacher();
 
@@ -85,7 +78,7 @@ export function TeacherFormDialog({
         fullName: existingTeacher.fullName,
         email: existingTeacher.email,
         phone: existingTeacher.phone,
-        specialty: existingTeacher.specialty,
+        specialtyId: existingTeacher.specialtyId,
         weeklySessionLoad: existingTeacher.weeklySessionLoad,
         bio: existingTeacher.bio ?? "",
         status: existingTeacher.status,
@@ -171,20 +164,20 @@ export function TeacherFormDialog({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="specialty"
+                name="specialtyId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Chuyên môn *</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="w-full">
-                          <SelectValue />
+                          <SelectValue placeholder="Chọn chuyên môn" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.entries(SPECIALTY_LABELS).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
+                        {specialties?.map((specialty) => (
+                          <SelectItem key={specialty.id} value={specialty.id}>
+                            {specialty.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

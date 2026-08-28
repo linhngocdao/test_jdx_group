@@ -9,6 +9,7 @@ import {
   DoorOpen,
   GraduationCap,
   LayoutDashboard,
+  Settings,
   Trash2,
   Users,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/rooms", label: "Phòng học", icon: DoorOpen },
   { href: "/courses", label: "Khoá học", icon: BookOpen },
   { href: "/enroll", label: "Đăng ký học", icon: ClipboardList },
+  { href: "/settings", label: "Cài đặt", icon: Settings },
 ];
 
 export function HrNav() {

@@ -1,12 +1,11 @@
 import type { BaseEntity } from "./entity";
 
-export type RoomEquipment = "projector" | "whiteboard" | "computers" | "ac";
-
 export interface Room extends BaseEntity {
   name: string;
   building: string;
   capacity: number;
-  equipment: RoomEquipment[];
+  /** Tham chiếu tới EquipmentType.id[] — danh mục thiết bị quản lý được trong Cài đặt, không cố định cứng. */
+  equipmentTypeIds: string[];
   note?: string;
 }
 

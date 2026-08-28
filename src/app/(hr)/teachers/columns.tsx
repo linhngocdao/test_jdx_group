@@ -14,16 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader, type DataTableColumnDef } from "@/components/data-table";
 import { EntityStatusBadge } from "@/components/entity-form";
-import type { Teacher, TeacherSpecialty } from "@/types/teacher";
-
-const SPECIALTY_LABELS: Record<TeacherSpecialty, string> = {
-  frontend: "Frontend",
-  backend: "Backend",
-  mobile: "Mobile",
-  data: "Data",
-  design: "Design",
-  other: "Khác",
-};
+import type { Teacher } from "@/types/teacher";
 
 function getInitials(name: string): string {
   return name
@@ -39,6 +30,7 @@ interface TeacherColumnActions {
   onDelete: (teacher: Teacher) => void;
   onToggleSuspend: (teacher: Teacher) => void;
   onExportSchedule: (teacher: Teacher) => void;
+  specialtyNameById: Map<string, string>;
 }
 
 export function createTeacherColumns({
@@ -46,6 +38,7 @@ export function createTeacherColumns({
   onDelete,
   onToggleSuspend,
   onExportSchedule,
+  specialtyNameById,
 }: TeacherColumnActions): DataTableColumnDef<Teacher>[] {
   return [
     {
@@ -74,11 +67,15 @@ export function createTeacherColumns({
       meta: { hideOnMobile: true, width: "14%" },
     },
     {
-      id: "specialty",
-      accessorKey: "specialty",
+      id: "specialtyId",
+      accessorKey: "specialtyId",
       header: "Chuyên môn",
       meta: { hideOnMobile: true, width: "14%" },
-      cell: ({ row }) => <Badge variant="secondary">{SPECIALTY_LABELS[row.original.specialty]}</Badge>,
+      cell: ({ row }) => (
+        <Badge variant="secondary">
+          {specialtyNameById.get(row.original.specialtyId) ?? "—"}
+        </Badge>
+      ),
     },
     {
       id: "weeklySessionLoad",
