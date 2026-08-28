@@ -23,9 +23,9 @@ const EQUIPMENT_LABELS: Record<RoomEquipment, string> = {
 };
 
 interface RoomColumnActions {
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onToggleSuspend: (id: string, isSuspended: boolean) => void;
+  onEdit: (room: Room) => void;
+  onDelete: (room: Room) => void;
+  onToggleSuspend: (room: Room) => void;
 }
 
 export function createRoomColumns({
@@ -98,10 +98,10 @@ export function createRoomColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-              <DropdownMenuItem onClick={() => onEdit(room.id)}>
+              <DropdownMenuItem onClick={() => onEdit(room)}>
                 <Pencil className="size-4" /> Chỉnh sửa
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggleSuspend(room.id, room.status === "active")}>
+              <DropdownMenuItem onClick={() => onToggleSuspend(room)}>
                 {room.status === "active" ? (
                   <>
                     <UserX className="size-4" /> Đang sửa chữa
@@ -113,7 +113,7 @@ export function createRoomColumns({
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(room.id)}>
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(room)}>
                 <Trash2 className="size-4" /> Xoá
               </DropdownMenuItem>
             </DropdownMenuContent>

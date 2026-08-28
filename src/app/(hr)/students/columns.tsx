@@ -30,9 +30,9 @@ function formatDate(epochMs: number): string {
 }
 
 interface StudentColumnActions {
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onToggleSuspend: (id: string, isSuspended: boolean) => void;
+  onEdit: (student: Student) => void;
+  onDelete: (student: Student) => void;
+  onToggleSuspend: (student: Student) => void;
 }
 
 export function createStudentColumns({
@@ -99,12 +99,10 @@ export function createStudentColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-              <DropdownMenuItem onClick={() => onEdit(student.id)}>
+              <DropdownMenuItem onClick={() => onEdit(student)}>
                 <Pencil className="size-4" /> Chỉnh sửa
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onToggleSuspend(student.id, student.status === "active")}
-              >
+              <DropdownMenuItem onClick={() => onToggleSuspend(student)}>
                 {student.status === "active" ? (
                   <>
                     <UserX className="size-4" /> Bảo lưu
@@ -116,7 +114,7 @@ export function createStudentColumns({
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(student.id)}>
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(student)}>
                 <Trash2 className="size-4" /> Xoá
               </DropdownMenuItem>
             </DropdownMenuContent>

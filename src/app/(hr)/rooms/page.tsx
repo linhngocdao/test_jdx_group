@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,27 +44,20 @@ export default function RoomsPage() {
   const rows = useMemo(() => listQuery.data?.rows ?? [], [listQuery.data]);
   const total = listQuery.data?.total ?? 0;
 
-  const findRow = useCallback((id: string) => rows.find((row) => row.id === id), [rows]);
-
+  // Callback nhận thẳng object Room (đã có sẵn trong cell renderer) thay vì
+  // `id` + tra cứu lại trong `rows` — nhờ vậy `columns` không phụ thuộc
+  // `rows`, không phải re-tạo mỗi khi trang dữ liệu đổi.
   const columns = useMemo(
     () =>
       createRoomColumns({
-        onEdit: (id) => {
-          const room = findRow(id);
-          if (room) setDialog({ type: "edit", room });
-        },
-        onDelete: (id) => {
-          const room = findRow(id);
-          if (room) setDialog({ type: "delete", room });
-        },
-        onToggleSuspend: (id, isSuspended) => {
-          const room = findRow(id);
-          if (!room) return;
-          if (isSuspended) {
+        onEdit: (room) => setDialog({ type: "edit", room }),
+        onDelete: (room) => setDialog({ type: "delete", room }),
+        onToggleSuspend: (room) => {
+          if (room.status === "active") {
             setDialog({ type: "suspend", room });
           } else {
             setStatusMutation.mutate(
-              { id, status: "active" },
+              { id: room.id, status: "active" },
               {
                 onSuccess: () => toast.success(`Đã kích hoạt lại "${room.name}".`),
                 onError: () => toast.error("Không thể cập nhật trạng thái."),
@@ -73,7 +66,7 @@ export default function RoomsPage() {
           }
         },
       }),
-    [findRow, setStatusMutation]
+    [setStatusMutation]
   );
 
   const table = useDataTableInstance<Room>({

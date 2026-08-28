@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,27 +50,21 @@ export default function TeachersPage() {
   const rows = useMemo(() => listQuery.data?.rows ?? [], [listQuery.data]);
   const total = listQuery.data?.total ?? 0;
 
-  const findRow = useCallback((id: string) => rows.find((row) => row.id === id), [rows]);
-
+  // Callback nhận thẳng object Teacher (đã có sẵn trong cell renderer qua
+  // `row.original`) thay vì `id` + tra cứu lại trong `rows` — nhờ vậy
+  // `columns` không phụ thuộc `rows`, không phải re-tạo mỗi khi trang dữ
+  // liệu đổi, và TanStack Table không phải rebuild toàn bộ column model.
   const columns = useMemo(
     () =>
       createTeacherColumns({
-        onEdit: (id) => {
-          const teacher = findRow(id);
-          if (teacher) setDialog({ type: "edit", teacher });
-        },
-        onDelete: (id) => {
-          const teacher = findRow(id);
-          if (teacher) setDialog({ type: "delete", teacher });
-        },
-        onToggleSuspend: (id, isSuspended) => {
-          const teacher = findRow(id);
-          if (!teacher) return;
-          if (isSuspended) {
+        onEdit: (teacher) => setDialog({ type: "edit", teacher }),
+        onDelete: (teacher) => setDialog({ type: "delete", teacher }),
+        onToggleSuspend: (teacher) => {
+          if (teacher.status === "active") {
             setDialog({ type: "suspend", teacher });
           } else {
             setStatusMutation.mutate(
-              { id, status: "active" },
+              { id: teacher.id, status: "active" },
               {
                 onSuccess: () => toast.success(`Đã kích hoạt lại "${teacher.fullName}".`),
                 onError: () => toast.error("Không thể cập nhật trạng thái."),
@@ -78,14 +72,14 @@ export default function TeachersPage() {
             );
           }
         },
-        onExportSchedule: (id) => {
-          exportSchedule.mutate(id, {
+        onExportSchedule: (teacher) => {
+          exportSchedule.mutate(teacher.id, {
             onSuccess: () => toast.success("Đã xuất lịch dạy."),
             onError: () => toast.error("Không thể xuất file."),
           });
         },
       }),
-    [findRow, setStatusMutation, exportSchedule]
+    [setStatusMutation, exportSchedule]
   );
 
   const table = useDataTableInstance<Teacher>({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -42,22 +42,17 @@ export default function CoursesPage() {
   const rows = useMemo(() => listQuery.data?.rows ?? [], [listQuery.data]);
   const total = listQuery.data?.total ?? 0;
 
-  const findRow = useCallback((id: string) => rows.find((row) => row.id === id), [rows]);
-
+  // Callback nhận thẳng object CourseWithNames (đã có sẵn trong cell
+  // renderer) thay vì `id` + tra cứu lại trong `rows` — nhờ vậy `columns`
+  // không phụ thuộc `rows`, không phải re-tạo mỗi khi trang dữ liệu đổi.
   const columns = useMemo(
     () =>
       createCourseColumns({
-        onView: (id) => router.push(`/courses/${id}`),
-        onEdit: (id) => {
-          const course = findRow(id);
-          if (course) setDialog({ type: "edit", course });
-        },
-        onDelete: (id) => {
-          const course = findRow(id);
-          if (course) setDialog({ type: "delete", course });
-        },
+        onView: (course) => router.push(`/courses/${course.id}`),
+        onEdit: (course) => setDialog({ type: "edit", course }),
+        onDelete: (course) => setDialog({ type: "delete", course }),
       }),
-    [findRow, router]
+    [router]
   );
 
   const table = useDataTableInstance<CourseWithNames>({

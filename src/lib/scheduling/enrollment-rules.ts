@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/dexie-db";
 import { countConfirmedEnrollments } from "@/lib/scheduling/course-lifecycle";
-import { findScheduleConflicts } from "@/lib/scheduling/conflict-detection";
+import { findStudentScheduleConflictsForSlots } from "@/lib/scheduling/conflict-detection";
 import type { Course } from "@/types/course";
 import type { Student } from "@/types/student";
 
@@ -50,20 +50,15 @@ export async function checkEnrollmentEligibility(
   }
 
   const courseSessions = await db.classSessions.where("courseId").equals(course.id).toArray();
-  for (const session of courseSessions) {
-    const conflicts = await findScheduleConflicts({
-      teacherId: session.teacherId,
-      roomId: session.roomId,
-      studentIds: [student.id],
+  const conflicts = await findStudentScheduleConflictsForSlots(
+    student.id,
+    courseSessions.map((session) => ({
       startAt: session.startAt,
       endAt: session.endAt,
       excludeSessionId: session.id,
-    });
-    const studentConflicts = conflicts.filter((c) => c.subject === "student");
-    if (studentConflicts.length > 0) {
-      reasons.push(...studentConflicts.map((c) => c.message));
-    }
-  }
+    }))
+  );
+  reasons.push(...conflicts.map((c) => c.message));
 
   return { eligible: reasons.length === 0, reasons };
 }

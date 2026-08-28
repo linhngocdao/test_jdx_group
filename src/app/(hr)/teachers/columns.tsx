@@ -35,10 +35,10 @@ function getInitials(name: string): string {
 }
 
 interface TeacherColumnActions {
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onToggleSuspend: (id: string, isSuspended: boolean) => void;
-  onExportSchedule: (id: string) => void;
+  onEdit: (teacher: Teacher) => void;
+  onDelete: (teacher: Teacher) => void;
+  onToggleSuspend: (teacher: Teacher) => void;
+  onExportSchedule: (teacher: Teacher) => void;
 }
 
 export function createTeacherColumns({
@@ -124,15 +124,13 @@ export function createTeacherColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-              <DropdownMenuItem onClick={() => onEdit(teacher.id)}>
+              <DropdownMenuItem onClick={() => onEdit(teacher)}>
                 <Pencil className="size-4" /> Chỉnh sửa
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExportSchedule(teacher.id)}>
+              <DropdownMenuItem onClick={() => onExportSchedule(teacher)}>
                 <Download className="size-4" /> Xuất lịch dạy
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onToggleSuspend(teacher.id, teacher.status === "active")}
-              >
+              <DropdownMenuItem onClick={() => onToggleSuspend(teacher)}>
                 {teacher.status === "active" ? (
                   <>
                     <UserX className="size-4" /> Tạm ngưng
@@ -144,7 +142,7 @@ export function createTeacherColumns({
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(teacher.id)}>
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(teacher)}>
                 <Trash2 className="size-4" /> Xoá
               </DropdownMenuItem>
             </DropdownMenuContent>

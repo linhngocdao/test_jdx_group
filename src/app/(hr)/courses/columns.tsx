@@ -21,9 +21,9 @@ function formatDate(epochMs: number): string {
 }
 
 interface CourseColumnActions {
-  onView: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onView: (course: CourseWithNames) => void;
+  onEdit: (course: CourseWithNames) => void;
+  onDelete: (course: CourseWithNames) => void;
 }
 
 export function createCourseColumns({
@@ -102,12 +102,12 @@ export function createCourseColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-              <DropdownMenuItem onClick={() => onView(course.id)}>Xem chi tiết</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEdit(course.id)}>
+              <DropdownMenuItem onClick={() => onView(course)}>Xem chi tiết</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEdit(course)}>
                 <Pencil className="size-4" /> Chỉnh sửa
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(course.id)}>
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(course)}>
                 <Trash2 className="size-4" /> Xoá
               </DropdownMenuItem>
             </DropdownMenuContent>

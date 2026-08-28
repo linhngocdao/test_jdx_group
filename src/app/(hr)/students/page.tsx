@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,27 +48,20 @@ export default function StudentsPage() {
   const rows = useMemo(() => listQuery.data?.rows ?? [], [listQuery.data]);
   const total = listQuery.data?.total ?? 0;
 
-  const findRow = useCallback((id: string) => rows.find((row) => row.id === id), [rows]);
-
+  // Callback nhận thẳng object Student (đã có sẵn trong cell renderer) thay
+  // vì `id` + tra cứu lại trong `rows` — nhờ vậy `columns` không phụ thuộc
+  // `rows`, không phải re-tạo mỗi khi trang dữ liệu đổi.
   const columns = useMemo(
     () =>
       createStudentColumns({
-        onEdit: (id) => {
-          const student = findRow(id);
-          if (student) setDialog({ type: "edit", student });
-        },
-        onDelete: (id) => {
-          const student = findRow(id);
-          if (student) setDialog({ type: "delete", student });
-        },
-        onToggleSuspend: (id, isSuspended) => {
-          const student = findRow(id);
-          if (!student) return;
-          if (isSuspended) {
+        onEdit: (student) => setDialog({ type: "edit", student }),
+        onDelete: (student) => setDialog({ type: "delete", student }),
+        onToggleSuspend: (student) => {
+          if (student.status === "active") {
             setDialog({ type: "suspend", student });
           } else {
             setStatusMutation.mutate(
-              { id, status: "active" },
+              { id: student.id, status: "active" },
               {
                 onSuccess: () => toast.success(`Đã kích hoạt lại "${student.fullName}".`),
                 onError: () => toast.error("Không thể cập nhật trạng thái."),
@@ -77,7 +70,7 @@ export default function StudentsPage() {
           }
         },
       }),
-    [findRow, setStatusMutation]
+    [setStatusMutation]
   );
 
   const table = useDataTableInstance<Student>({

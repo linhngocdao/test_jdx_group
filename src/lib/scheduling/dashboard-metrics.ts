@@ -1,5 +1,5 @@
 import { db } from "@/lib/db/dexie-db";
-import { autoCancelUnderEnrolledCourses, countConfirmedEnrollments } from "@/lib/scheduling/course-lifecycle";
+import { autoCancelUnderEnrolledCourses, countConfirmedEnrollmentsBulk } from "@/lib/scheduling/course-lifecycle";
 import type { Course } from "@/types/course";
 import type { Teacher } from "@/types/teacher";
 
@@ -67,12 +67,12 @@ export async function computeDashboardMetrics(): Promise<DashboardMetrics> {
   const now = Date.now();
   const riskWindowMs = AT_RISK_WINDOW_DAYS * 86_400_000;
   const openCourses = courses.filter((c) => c.courseStatus === "open");
-  const confirmedCounts = await Promise.all(openCourses.map((c) => countConfirmedEnrollments(c.id)));
+  const confirmedCounts = await countConfirmedEnrollmentsBulk(openCourses.map((c) => c.id));
 
   const atRiskCourses: AtRiskCourse[] = openCourses
-    .map((course, index) => ({
+    .map((course) => ({
       ...course,
-      confirmedCount: confirmedCounts[index],
+      confirmedCount: confirmedCounts.get(course.id) ?? 0,
       daysUntilStart: Math.ceil((course.startDate - now) / 86_400_000),
     }))
     .filter(
