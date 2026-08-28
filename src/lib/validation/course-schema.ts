@@ -6,6 +6,24 @@ export const courseSchema: yup.ObjectSchema<CourseInput> = yup.object({
   name: yup.string().trim().required("Vui lòng nhập tên khoá học").min(2, "Tên quá ngắn"),
   teacherId: yup.string().trim().required("Vui lòng chọn giảng viên phụ trách"),
   roomId: yup.string().trim().required("Vui lòng chọn phòng học"),
+  teacherIds: yup
+    .array(yup.string().required())
+    .required()
+    .min(1, "Vui lòng chọn ít nhất 1 giảng viên")
+    .test(
+      "includes-primary",
+      "Danh sách giảng viên phải bao gồm giảng viên phụ trách chính",
+      (value, ctx) => !ctx.parent.teacherId || (value ?? []).includes(ctx.parent.teacherId)
+    ),
+  roomIds: yup
+    .array(yup.string().required())
+    .required()
+    .min(1, "Vui lòng chọn ít nhất 1 phòng học")
+    .test(
+      "includes-primary",
+      "Danh sách phòng học phải bao gồm phòng mặc định",
+      (value, ctx) => !ctx.parent.roomId || (value ?? []).includes(ctx.parent.roomId)
+    ),
   minStudents: yup
     .number()
     .typeError("Phải là số")

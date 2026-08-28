@@ -74,10 +74,10 @@ export function EnrollStudentDialog({
         />
 
         {reasons.length > 0 && (
-          <Alert variant="destructive">
-            <AlertTriangle className="size-4" />
-            <AlertTitle>Không thể đăng ký</AlertTitle>
-            <AlertDescription>
+          <Alert className="border-red-200 bg-red-50 text-red-900">
+            <AlertTriangle className="size-4 text-red-600" />
+            <AlertTitle className="text-red-900">Không thể đăng ký</AlertTitle>
+            <AlertDescription className="text-red-700">
               <ul className="list-disc space-y-1 pl-4">
                 {reasons.map((reason) => (
                   <li key={reason}>{reason}</li>
@@ -87,7 +87,7 @@ export function EnrollStudentDialog({
           </Alert>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="mx-0 mb-0 rounded-none border-t-0 bg-transparent p-0 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={createEnrollment.isPending}>
             Huỷ
           </Button>

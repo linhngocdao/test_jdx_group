@@ -8,6 +8,11 @@ import {
 
 import { db } from "@/lib/db/dexie-db";
 import { checkEnrollmentEligibility } from "@/lib/scheduling/enrollment-rules";
+import {
+  autoJoinUpcomingSessions,
+  autoLeaveUpcomingSessions,
+  type SessionRosterSyncResult,
+} from "@/lib/scheduling/session-roster";
 import type { Enrollment, EnrollmentInput, EnrollmentStatus } from "@/types/enrollment";
 
 const QUERY_KEY = "enrollments";
@@ -84,8 +89,21 @@ export function useCreateEnrollment(): UseMutationResult<Enrollment, Error, Enro
   });
 }
 
+export interface TransitionEnrollmentResult {
+  enrollment: Enrollment;
+  /** Có giá trị khi chuyển sang "confirmed" — kết quả tự động gán học viên vào các buổi sắp tới. */
+  rosterSync?: SessionRosterSyncResult;
+}
+
+/**
+ * Đổi trạng thái đăng ký. Khi chuyển sang "confirmed", tự động thêm học viên
+ * vào mọi buổi học chưa diễn ra của khoá (đúng kỳ vọng "đăng ký xong là học
+ * được ngay") — nhưng CHỈ khi không xung đột lịch, kiểm tra lại đầy đủ cho
+ * từng buổi trước khi gán, không bao giờ gán bất chấp điều kiện. Khi huỷ
+ * ("cancelled"), loại khỏi các buổi chưa diễn ra, giữ nguyên lịch sử đã học.
+ */
 export function useTransitionEnrollmentStatus(): UseMutationResult<
-  Enrollment,
+  TransitionEnrollmentResult,
   Error,
   { id: string; to: EnrollmentStatus; cancelReason?: string }
 > {
@@ -101,11 +119,20 @@ export function useTransitionEnrollmentStatus(): UseMutationResult<
         updatedAt: Date.now(),
       };
       await db.enrollments.put(updated);
-      return updated;
+
+      let rosterSync: SessionRosterSyncResult | undefined;
+      if (to === "confirmed") {
+        rosterSync = await autoJoinUpcomingSessions(existing.studentId, existing.courseId);
+      } else if (to === "cancelled") {
+        await autoLeaveUpcomingSessions(existing.studentId, existing.courseId);
+      }
+
+      return { enrollment: updated, rosterSync };
     },
-    onSuccess: (enrollment) => {
+    onSuccess: ({ enrollment }) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["courses", "enrollment-count", enrollment.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["class-sessions"] });
     },
   });
 }

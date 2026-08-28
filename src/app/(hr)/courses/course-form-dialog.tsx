@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -50,6 +52,8 @@ const DEFAULT_VALUES: CourseInput = {
   name: "",
   teacherId: "",
   roomId: "",
+  teacherIds: [],
+  roomIds: [],
   minStudents: 8,
   maxStudents: 20,
   startDate: 0,
@@ -76,7 +80,10 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
     defaultValues: DEFAULT_VALUES,
   });
 
+  const selectedTeacherId = form.watch("teacherId");
   const selectedRoomId = form.watch("roomId");
+  const teacherIds = form.watch("teacherIds") ?? [];
+  const roomIds = form.watch("roomIds") ?? [];
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +93,10 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
         name: existingCourse.name,
         teacherId: existingCourse.teacherId,
         roomId: existingCourse.roomId,
+        teacherIds: existingCourse.teacherIds?.length
+          ? existingCourse.teacherIds
+          : [existingCourse.teacherId],
+        roomIds: existingCourse.roomIds?.length ? existingCourse.roomIds : [existingCourse.roomId],
         minStudents: existingCourse.minStudents,
         maxStudents: existingCourse.maxStudents,
         startDate: existingCourse.startDate,
@@ -97,7 +108,26 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
     }
   }, [open, mode, existingCourse, form]);
 
-  // Gợi ý số tối đa theo sức chứa phòng đã chọn, nếu người dùng chưa tự chỉnh.
+  // Giảng viên/phòng phụ trách chính luôn phải nằm trong danh sách được phép
+  // dùng cho khoá học — re-sync mỗi khi teacherId/roomId đổi (không chỉ khi
+  // teacherIds/roomIds đổi), vì đây chính là hành động kích hoạt việc thêm.
+  useEffect(() => {
+    if (!selectedTeacherId) return;
+    const current = form.getValues("teacherIds") ?? [];
+    if (!current.includes(selectedTeacherId)) {
+      form.setValue("teacherIds", [...current, selectedTeacherId]);
+    }
+  }, [form, selectedTeacherId]);
+
+  useEffect(() => {
+    if (!selectedRoomId) return;
+    const current = form.getValues("roomIds") ?? [];
+    if (!current.includes(selectedRoomId)) {
+      form.setValue("roomIds", [...current, selectedRoomId]);
+    }
+  }, [form, selectedRoomId]);
+
+  // Gợi ý số tối đa theo sức chứa phòng chính đã chọn, nếu người dùng chưa tự chỉnh.
   useEffect(() => {
     if (mode !== "create" || !selectedRoomId) return;
     const room = rooms?.find((r) => r.id === selectedRoomId);
@@ -129,7 +159,8 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Tạo khoá học" : "Chỉnh sửa khoá học"}</DialogTitle>
           <DialogDescription>
-            Gán giảng viên phụ trách, chọn phòng học và đặt ngày khai giảng. Các trường có dấu * là bắt buộc.
+            Gán giảng viên/phòng học phụ trách chính, và chọn thêm giảng viên/phòng dự phòng để có
+            thể phân công khi lên lịch từng buổi. Các trường có dấu * là bắt buộc.
           </DialogDescription>
         </DialogHeader>
 
@@ -155,7 +186,7 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
                 name="teacherId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Giảng viên phụ trách *</FormLabel>
+                    <FormLabel>Giảng viên phụ trách chính *</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -179,7 +210,7 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
                 name="roomId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phòng học *</FormLabel>
+                    <FormLabel>Phòng học mặc định *</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -194,6 +225,91 @@ export function CourseFormDialog({ open, onOpenChange, mode, courseId }: CourseF
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="teacherIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Giảng viên được phép dạy *</FormLabel>
+                    <ScrollArea className="h-36 rounded-md border p-2">
+                      <div className="space-y-1">
+                        {teachers?.map((teacher) => {
+                          const checked = field.value?.includes(teacher.id);
+                          const isPrimary = teacher.id === form.getValues("teacherId");
+                          return (
+                            <label
+                              key={teacher.id}
+                              className="flex items-center gap-2 rounded-sm px-1.5 py-1 text-sm hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                disabled={isPrimary}
+                                onCheckedChange={(next) => {
+                                  const current = field.value ?? [];
+                                  field.onChange(
+                                    next
+                                      ? [...current, teacher.id]
+                                      : current.filter((id) => id !== teacher.id)
+                                  );
+                                }}
+                              />
+                              <span className="truncate">{teacher.fullName}</span>
+                              {isPrimary && (
+                                <span className="text-xs text-muted-foreground">(chính)</span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="roomIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phòng học được phép dùng *</FormLabel>
+                    <ScrollArea className="h-36 rounded-md border p-2">
+                      <div className="space-y-1">
+                        {rooms?.map((room) => {
+                          const checked = field.value?.includes(room.id);
+                          const isPrimary = room.id === form.getValues("roomId");
+                          return (
+                            <label
+                              key={room.id}
+                              className="flex items-center gap-2 rounded-sm px-1.5 py-1 text-sm hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                disabled={isPrimary}
+                                onCheckedChange={(next) => {
+                                  const current = field.value ?? [];
+                                  field.onChange(
+                                    next
+                                      ? [...current, room.id]
+                                      : current.filter((id) => id !== room.id)
+                                  );
+                                }}
+                              />
+                              <span className="truncate">{room.name}</span>
+                              {isPrimary && (
+                                <span className="text-xs text-muted-foreground">(mặc định)</span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
                     <FormMessage />
                   </FormItem>
                 )}

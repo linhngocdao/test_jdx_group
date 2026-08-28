@@ -89,7 +89,21 @@ export function EnrollmentList({
                               transition.mutate(
                                 { id: enrollment.id, to: "confirmed" },
                                 {
-                                  onSuccess: () => toast.success("Đã xác nhận đăng ký."),
+                                  onSuccess: ({ rosterSync }) => {
+                                    if (rosterSync && rosterSync.skippedDueToConflict.length > 0) {
+                                      toast.warning(
+                                        `Đã xác nhận đăng ký, nhưng không thể tự thêm vào ${rosterSync.skippedDueToConflict.length} buổi do trùng lịch: ${rosterSync.skippedDueToConflict
+                                          .map((s) => s.courseName)
+                                          .join(", ")}. Vui lòng kiểm tra lại thủ công.`
+                                      );
+                                    } else if (rosterSync && rosterSync.addedToSessionCount > 0) {
+                                      toast.success(
+                                        `Đã xác nhận đăng ký và thêm vào ${rosterSync.addedToSessionCount} buổi học sắp tới.`
+                                      );
+                                    } else {
+                                      toast.success("Đã xác nhận đăng ký.");
+                                    }
+                                  },
                                   onError: () => toast.error("Không thể xác nhận."),
                                 }
                               )

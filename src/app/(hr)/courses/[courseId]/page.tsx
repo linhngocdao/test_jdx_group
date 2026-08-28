@@ -1,10 +1,12 @@
 "use client";
 
 import { use, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -18,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCourseTeachers } from "@/hooks/use-class-sessions";
 import {
   useCourse,
   useCourseEnrollmentCount,
@@ -29,12 +33,14 @@ import { useRoom } from "@/hooks/use-rooms";
 import { useTeacher } from "@/hooks/use-teachers";
 import { COURSE_TRANSITIONS, COURSE_STATUS_LABELS } from "@/types/course";
 import type { CourseStatus } from "@/types/course";
+import type { ClassSession } from "@/types/class-session";
 
 import { CourseStatusBadge } from "../course-status-badge";
 import { EnrollmentList } from "./enrollment-list";
 import { EnrollStudentDialog } from "./enroll-student-dialog";
 import { SessionFormDialog } from "./session-form-dialog";
 import { SessionList } from "./session-list";
+import { SessionWeekCalendar } from "./session-week-calendar";
 
 function formatDate(epochMs: number): string {
   if (!epochMs) return "—";
@@ -50,14 +56,17 @@ export default function CourseDetailPage({
   const router = useRouter();
 
   const { data: course, isLoading } = useCourse(courseId);
-  const { data: teacher } = useTeacher(course?.teacherId);
+  const { data: primaryTeacher } = useTeacher(course?.teacherId);
   const { data: room } = useRoom(course?.roomId);
   const { data: confirmedCount } = useCourseEnrollmentCount(courseId);
   const { data: enrollments } = useCourseEnrollments(courseId);
+  const { data: teachingTeachers } = useCourseTeachers(courseId);
   const transition = useTransitionCourseStatus();
   const exportStudents = useExportCourseStudents();
 
-  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [sessionDialogState, setSessionDialogState] = useState<
+    { type: "closed" } | { type: "create" } | { type: "edit"; session: ClassSession }
+  >({ type: "closed" });
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [pendingCancel, setPendingCancel] = useState(false);
 
@@ -85,9 +94,7 @@ export default function CourseDetailPage({
   const activeEnrolledStudentIds = (enrollments ?? [])
     .filter((e) => e.enrollmentStatus === "pending" || e.enrollmentStatus === "confirmed")
     .map((e) => e.studentId);
-  const confirmedStudentIds = (enrollments ?? [])
-    .filter((e) => e.enrollmentStatus === "confirmed")
-    .map((e) => e.studentId);
+  const confirmedStudents = (enrollments ?? []).filter((e) => e.enrollmentStatus === "confirmed");
 
   function handleTransition(to: CourseStatus) {
     if (to === "cancelled") {
@@ -117,14 +124,37 @@ export default function CourseDetailPage({
         </Button>
 
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">{course.name}</h1>
               <CourseStatusBadge status={course.courseStatus} />
             </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+              <span>Giảng viên phụ trách:</span>
+              {primaryTeacher ? (
+                <Link href={`/teachers/${primaryTeacher.id}`} className="font-medium text-foreground hover:underline">
+                  {primaryTeacher.fullName}
+                </Link>
+              ) : (
+                "—"
+              )}
+              {teachingTeachers && teachingTeachers.length > 1 && (
+                <span className="flex items-center gap-1">
+                  · đang dạy thực tế:
+                  {teachingTeachers.map((t) => (
+                    <Link key={t.id} href={`/teachers/${t.id}`}>
+                      <Badge variant="secondary" className="text-xs hover:bg-secondary/70">
+                        {t.fullName} ({t.sessionCount})
+                      </Badge>
+                    </Link>
+                  ))}
+                </span>
+              )}
+            </div>
+
             <p className="text-sm text-muted-foreground">
-              Giảng viên: {teacher?.fullName ?? "—"} · Phòng: {room?.name ?? "—"} · Khai giảng:{" "}
-              {formatDate(course.startDate)}
+              Phòng: {room?.name ?? "—"} · Khai giảng: {formatDate(course.startDate)}
             </p>
             <p className="text-sm text-muted-foreground">
               Học viên đã xác nhận: {confirmedCount ?? 0}/{course.maxStudents} (tối thiểu cần{" "}
@@ -167,15 +197,47 @@ export default function CourseDetailPage({
       <Separator />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <SessionList courseId={courseId} onAddSession={() => setSessionDialogOpen(true)} />
+        <div className="space-y-3">
+          <Tabs defaultValue="calendar">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Lịch dạy</h2>
+              <TabsList className="h-8">
+                <TabsTrigger value="calendar" className="text-xs">Lịch tuần</TabsTrigger>
+                <TabsTrigger value="table" className="text-xs">Bảng</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="calendar" className="mt-3">
+              <SessionWeekCalendar
+                courseId={courseId}
+                onEditSession={(session) => setSessionDialogState({ type: "edit", session })}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3"
+                onClick={() => setSessionDialogState({ type: "create" })}
+              >
+                Thêm buổi học
+              </Button>
+            </TabsContent>
+            <TabsContent value="table" className="mt-3">
+              <SessionList
+                courseId={courseId}
+                onAddSession={() => setSessionDialogState({ type: "create" })}
+                onEditSession={(session) => setSessionDialogState({ type: "edit", session })}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
         <EnrollmentList courseId={courseId} onEnroll={() => setEnrollDialogOpen(true)} />
       </div>
 
       <SessionFormDialog
-        open={sessionDialogOpen}
-        onOpenChange={setSessionDialogOpen}
+        open={sessionDialogState.type !== "closed"}
+        onOpenChange={(open) => !open && setSessionDialogState({ type: "closed" })}
         course={course}
-        confirmedStudentIds={confirmedStudentIds}
+        confirmedStudents={confirmedStudents}
+        editingSession={sessionDialogState.type === "edit" ? sessionDialogState.session : null}
       />
 
       <EnrollStudentDialog

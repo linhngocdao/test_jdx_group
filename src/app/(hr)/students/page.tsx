@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ type DialogState =
   | { type: "suspend"; student: Student };
 
 export default function StudentsPage() {
+  const router = useRouter();
   const [dialog, setDialog] = useState<DialogState>({ type: "closed" });
 
   const removeMutation = useRemoveStudent();
@@ -108,7 +110,7 @@ export default function StudentsPage() {
         data={rows}
         isLoading={listQuery.isLoading}
         isFetching={listQuery.isFetching}
-        onRowClick={(student) => setDialog({ type: "edit", student })}
+        onRowClick={(student) => router.push(`/students/${student.id}`)}
       />
 
       <DataTablePagination

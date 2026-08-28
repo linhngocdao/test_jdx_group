@@ -155,11 +155,26 @@ export async function seedDatabase(options?: {
       startDate = now + randomInt(3, 45) * DAY_MS;
     }
 
+    // Vài giảng viên/phòng dự phòng ngoài giảng viên/phòng chính — để lên
+    // lịch từng buổi có thể phân công (dạy thay, đổi phòng) trong phạm vi
+    // khoá học đã duyệt, đúng yêu cầu "khoá học chọn được nhiều giáo viên,
+    // nhiều phòng".
+    const extraTeachers = [...activeTeachers]
+      .filter((t) => t.id !== teacher?.id)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, randomInt(0, 2));
+    const extraRooms = [...activeRooms]
+      .filter((r) => r.id !== room?.id)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, randomInt(0, 1));
+
     return {
       id: crypto.randomUUID(),
       name: `${pick(COURSE_TOPICS)} #${i + 1}`,
       teacherId: teacher?.id ?? "",
       roomId: room?.id ?? "",
+      teacherIds: [teacher?.id, ...extraTeachers.map((t) => t.id)].filter((id): id is string => Boolean(id)),
+      roomIds: [room?.id, ...extraRooms.map((r) => r.id)].filter((id): id is string => Boolean(id)),
       minStudents,
       maxStudents: room?.capacity ?? 20,
       startDate,

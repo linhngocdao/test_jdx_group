@@ -23,8 +23,19 @@ export interface Course {
   createdAt: number;
   updatedAt: number;
   name: string;
+  /** Giảng viên phụ trách chính — mặc định khi tạo buổi học mới, luôn có mặt trong `teacherIds`. */
   teacherId: string;
+  /** Phòng học mặc định — luôn có mặt trong `roomIds`. */
   roomId: string;
+  /**
+   * Toàn bộ giảng viên được phép dạy khoá học này — khi lên lịch từng buổi,
+   * chỉ được chọn giảng viên trong danh sách này (không phải toàn bộ giảng
+   * viên active của trung tâm), để việc phân công buổi/phòng luôn nằm trong
+   * phạm vi đã duyệt cho khoá học.
+   */
+  teacherIds: string[];
+  /** Toàn bộ phòng học được phép dùng cho khoá học này — cùng lý do với `teacherIds`. */
+  roomIds: string[];
   /** Số học viên tối thiểu để khoá học được phép khai giảng — dưới mức này tại ngày khai giảng sẽ tự huỷ. */
   minStudents: number;
   /** Số học viên tối đa — mặc định lấy theo sức chứa phòng học tại thời điểm tạo, có thể chỉnh nhỏ hơn. */

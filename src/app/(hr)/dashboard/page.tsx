@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 return (
                   <li key={teacher.id}>
                     <Link
-                      href="/teachers"
+                      href={`/teachers/${teacher.id}`}
                       className="group flex items-center justify-between gap-3 py-2.5 text-sm transition-colors hover:text-foreground"
                     >
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
