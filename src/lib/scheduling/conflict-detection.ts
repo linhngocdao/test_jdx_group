@@ -39,6 +39,26 @@ function formatTimeRange(startAt: number, endAt: number): string {
   return `${dateFormatter.format(startAt)} (${timeFormatter.format(startAt)}-${timeFormatter.format(endAt)})`;
 }
 
+/** Lọc các session của 1 subject (giảng viên/phòng) còn hoạt động và trùng giờ với khoảng [startAt, endAt). */
+async function findOverlappingSessionsBy(
+  field: "teacherId" | "roomId",
+  subjectId: string,
+  startAt: number,
+  endAt: number,
+  excludeSessionId?: string
+): Promise<ClassSession[]> {
+  return db.classSessions
+    .where(field)
+    .equals(subjectId)
+    .filter(
+      (session) =>
+        !session.isFinished &&
+        session.id !== excludeSessionId &&
+        timeRangesOverlap(startAt, endAt, session.startAt, session.endAt)
+    )
+    .toArray();
+}
+
 /**
  * Core dùng chung để phát hiện xung đột lịch — được gọi cả khi tạo/sửa buổi
  * học trong 1 khoá học (module Khoá học & Lịch dạy) lẫn khi xác nhận đăng ký
@@ -47,20 +67,24 @@ function formatTimeRange(startAt: number, endAt: number): string {
  *
  * Trả về TOÀN BỘ xung đột tìm thấy (không dừng ở lỗi đầu tiên) để thông báo
  * đầy đủ cho người dùng biết xung đột xảy ra với ai, lúc nào, ở đâu.
+ *
+ * Dùng index Dexie (`teacherId`, `roomId`) để chỉ quét các session của đúng
+ * giảng viên/phòng đó thay vì quét toàn bảng `classSessions` — với hàng
+ * nghìn session, đây là khác biệt giữa 1 lookup theo index và 1 full scan.
  */
 export async function findScheduleConflicts(
   candidate: CandidateSession
 ): Promise<ScheduleConflict[]> {
   const { teacherId, roomId, studentIds, startAt, endAt, excludeSessionId } = candidate;
 
-  const activeSessions = await db.classSessions
-    .filter((session) => !session.isFinished && session.id !== excludeSessionId)
-    .filter((session) => timeRangesOverlap(startAt, endAt, session.startAt, session.endAt))
-    .toArray();
+  const [teacherSessions, roomSessions] = await Promise.all([
+    findOverlappingSessionsBy("teacherId", teacherId, startAt, endAt, excludeSessionId),
+    findOverlappingSessionsBy("roomId", roomId, startAt, endAt, excludeSessionId),
+  ]);
 
   const conflicts: ScheduleConflict[] = [];
 
-  const teacherConflictSession = activeSessions.find((s) => s.teacherId === teacherId);
+  const teacherConflictSession = teacherSessions[0];
   if (teacherConflictSession) {
     const teacher = await db.teachers.get(teacherId);
     conflicts.push({
@@ -74,7 +98,7 @@ export async function findScheduleConflicts(
     });
   }
 
-  const roomConflictSession = activeSessions.find((s) => s.roomId === roomId);
+  const roomConflictSession = roomSessions[0];
   if (roomConflictSession) {
     const room = await db.rooms.get(roomId);
     conflicts.push({
@@ -89,22 +113,41 @@ export async function findScheduleConflicts(
   }
 
   if (studentIds.length > 0) {
+    // Xung đột học viên có thể xảy ra ở bất kỳ session nào (không chỉ của
+    // giảng viên/phòng này) — không có index trên mảng studentIds nên đây
+    // vẫn cần quét theo khoảng giờ, nhưng gom lookup học viên thành 1
+    // bulkGet thay vì awaited get() từng cái trong vòng lặp.
     const studentIdSet = new Set(studentIds);
-    for (const session of activeSessions) {
-      const overlappingStudentIds = session.studentIds.filter((id) => studentIdSet.has(id));
-      for (const studentId of overlappingStudentIds) {
-        const student = await db.students.get(studentId);
-        conflicts.push({
-          subject: "student",
-          subjectId: studentId,
-          subjectName: student?.fullName ?? "Học viên",
-          conflictingSession: session,
-          message: `Học viên ${student?.fullName ?? ""} đã tham gia "${
-            session.courseName
-          }" trùng giờ ${formatTimeRange(session.startAt, session.endAt)}.`,
-        });
-      }
-    }
+    const overlappingSessions = await db.classSessions
+      .filter(
+        (session) =>
+          !session.isFinished &&
+          session.id !== excludeSessionId &&
+          timeRangesOverlap(startAt, endAt, session.startAt, session.endAt) &&
+          session.studentIds.some((id) => studentIdSet.has(id))
+      )
+      .toArray();
+
+    const conflictPairs = overlappingSessions.flatMap((session) =>
+      session.studentIds
+        .filter((id) => studentIdSet.has(id))
+        .map((studentId) => ({ studentId, session }))
+    );
+
+    const students = await db.students.bulkGet(conflictPairs.map((p) => p.studentId));
+
+    conflictPairs.forEach(({ studentId, session }, index) => {
+      const student = students[index];
+      conflicts.push({
+        subject: "student",
+        subjectId: studentId,
+        subjectName: student?.fullName ?? "Học viên",
+        conflictingSession: session,
+        message: `Học viên ${student?.fullName ?? ""} đã tham gia "${
+          session.courseName
+        }" trùng giờ ${formatTimeRange(session.startAt, session.endAt)}.`,
+      });
+    });
   }
 
   return conflicts;

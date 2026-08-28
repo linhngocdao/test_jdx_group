@@ -1,16 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { db } from "@/lib/db/dexie-db";
-import { simulateLatency } from "@/lib/db/list-query";
+import { normalizeSearchText, simulateLatency } from "@/lib/db/list-query";
 
 const RESULT_LIMIT = 50;
-
-function normalizeSearchText(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-}
 
 /**
  * Tìm học viên active theo tên/email, giới hạn 50 kết quả — dùng cho dropdown
